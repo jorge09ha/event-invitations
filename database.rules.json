@@ -1,0 +1,81 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "events": {
+      "$eventId": {
+        "config": {
+          ".read": true
+        },
+        "private": {
+          "$code": {
+            ".read": true
+          }
+        },
+        "voteCount": {
+          ".read": true,
+          ".write": "auth != null && !data.parent().child('votes').child(auth.uid).exists() && newData.parent().child('votes').child(auth.uid).exists()",
+          ".validate": "newData.isNumber() && data.isNumber() && newData.val() === data.val() + 1"
+        },
+        "voterNames": {
+          "$nameKey": {
+            ".read": true,
+            ".write": "auth != null && !data.exists() && now < root.child('events').child($eventId).child('config').child('revealAt').val()",
+            ".validate": "$nameKey.length >= 1 && $nameKey.length <= 60 && newData.val() === auth.uid && newData.parent().parent().child('votes').child(auth.uid).child('nameKey').val() === $nameKey"
+          }
+        },
+        "votes": {
+          ".read": "now >= root.child('events').child($eventId).child('config').child('revealAt').val()",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && now < root.child('events').child($eventId).child('config').child('revealAt').val()",
+            ".validate": "newData.hasChildren(['name', 'nameKey', 'choice', 'ts']) && newData.child('nameKey').isString() && newData.parent().parent().child('voterNames').child(newData.child('nameKey').val()).val() === auth.uid && newData.parent().parent().child('voteCount').val() === root.child('events').child($eventId).child('voteCount').val() + 1",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+            },
+            "nameKey": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+            },
+            "choice": {
+              ".validate": "newData.val() === 'nino' || newData.val() === 'nina'"
+            },
+            "ts": {
+              ".validate": "newData.val() === now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "rsvps": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && newData.exists()",
+            ".validate": "newData.hasChildren(['name', 'attending', 'guests', 'code', 'ts']) && newData.child('code').isString() && newData.child('code').val().length >= 4 && newData.child('code').val().length <= 64 && root.child('events').child($eventId).child('private').child(newData.child('code').val()).exists()",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+            },
+            "attending": {
+              ".validate": "newData.isBoolean()"
+            },
+            "guests": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20"
+            },
+            "message": {
+              ".validate": "newData.isString() && newData.val().length <= 500"
+            },
+            "code": {
+              ".validate": "newData.isString()"
+            },
+            "ts": {
+              ".validate": "newData.val() === now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "events": {
+    "pa2puwypy8": {
+      "config": {
+        "publicTitle": "¿Niño o niña?",
+        "publicSubtitle": "Vote por lo que usted cree que será el bebé",
+        "revealAt": 1797109200000,
+        "countdownSeconds": 10
+      },
+      "voteCount": 0,
+      "private": {
+        "CAMBIE-ESTE-CODIGO": {
+          "title": "Revelación de sexo del bebé",
+          "place": "Nombre del lugar",
+          "address": "Dirección completa del lugar",
+          "mapsUrl": "https://maps.google.com/?q=9.9281,-84.0907",
+          "date": "Sábado 12 de diciembre",
+          "time": "3:00 p. m.",
+          "dressCode": "Asistir con camisa blanca.",
+          "rsvpBy": "1 de diciembre"
+        }
+      }
+    }
+  }
+}

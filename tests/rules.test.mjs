@@ -1,0 +1,52 @@
+import { readFileSync } from "node:fs";
+import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
+import firebase from "firebase/compat/app";
+import "firebase/compat/database";
+const SV = firebase.database.ServerValue;
+const E = "events/ev1";
+const env = await initializeTestEnvironment({ projectId: "demo-test", database: { rules: readFileSync("../database.rules.json", "utf8"), host: "127.0.0.1", port: 9419 } });
+let pass = 0, fail = 0;
+async function t(name, fn) { try { await fn(); pass++; console.log("ok  ", name); } catch (e) { fail++; console.log("FAIL", name, e.message); } }
+const seed = (revealAt) => env.withSecurityRulesDisabled((c) => c.database().ref(E).set({ config: { revealAt, countdownSeconds: 10, publicTitle: "x" }, voteCount: 0, private: { "CODIGO-1234": { address: "secreta" } } }));
+const db = (uid) => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).database();
+const vote = (uid, name, key, choice = "nino", extra = {}) => db(uid).ref(E).update({ [`votes/${uid}`]: { name, nameKey: key, choice, ts: SV.TIMESTAMP, ...extra }, [`voterNames/${key}`]: uid, voteCount: SV.increment(1) });
+
+await seed(Date.now() + 3600e3);
+await t("config público", () => assertSucceeds(db(null).ref(`${E}/config`).get()));
+await t("no se puede listar private", () => assertFails(db("a").ref(`${E}/private`).get()));
+await t("no se puede leer el evento completo", () => assertFails(db("a").ref(E).get()));
+await t("private con código correcto", async () => { const s = await assertSucceeds(db("a").ref(`${E}/private/CODIGO-1234`).get()); if (s.val()?.address !== "secreta") throw new Error("sin datos"); });
+await t("private con código incorrecto devuelve vacío", async () => { const s = await db("a").ref(`${E}/private/OTRO`).get(); if (s.exists()) throw new Error("expuso"); });
+await t("voto sin autenticación falla", () => assertFails(vote(null, "Ana", "ana")));
+await t("voto válido", () => assertSucceeds(vote("alice", "Ana", "ana")));
+await t("segundo voto mismo usuario falla", () => assertFails(vote("alice", "Ana B", "ana b")));
+await t("mismo nombre otro usuario falla", () => assertFails(vote("bob", "ANA", "ana")));
+await t("opción inválida falla", () => assertFails(vote("bob", "Bob", "bob", "otro")));
+await t("campo extra falla", () => assertFails(vote("bob", "Bob", "bob", "nina", { hack: 1 })));
+await t("nameKey distinto a la ruta falla", () => assertFails(db("bob").ref(E).update({ "votes/bob": { name: "Bob", nameKey: "bob", choice: "nina", ts: SV.TIMESTAMP }, "voterNames/otro": "bob", voteCount: SV.increment(1) })));
+await t("voto sin aumentar contador falla", () => assertFails(db("bob").ref(E).update({ "votes/bob": { name: "Bob", nameKey: "bob", choice: "nina", ts: SV.TIMESTAMP }, "voterNames/bob": "bob" })));
+await t("contador +2 falla", () => assertFails(db("bob").ref(E).update({ "votes/bob": { name: "Bob", nameKey: "bob", choice: "nina", ts: SV.TIMESTAMP }, "voterNames/bob": "bob", voteCount: 3 })));
+await t("segundo voto válido (otro usuario)", () => assertSucceeds(vote("bob", "Bob", "bob", "nina")));
+await t("inflar contador sin voto falla", () => assertFails(db("carl").ref(`${E}/voteCount`).set(SV.increment(1))));
+await t("reservar nombre sin voto falla", () => assertFails(db("carl").ref(`${E}/voterNames/pepe`).set("carl")));
+await t("contador público = 2", async () => { const s = await assertSucceeds(db(null).ref(`${E}/voteCount`).get()); if (s.val() !== 2) throw new Error(s.val()); });
+await t("votos ocultos antes de la revelación", () => assertFails(db("alice").ref(`${E}/votes`).get()));
+await t("leer voto propio", () => assertSucceeds(db("alice").ref(`${E}/votes/alice`).get()));
+await t("leer voto ajeno falla", () => assertFails(db("alice").ref(`${E}/votes/bob`).get()));
+await t("borrar voto propio falla", () => assertFails(db("alice").ref(`${E}/votes/alice`).remove()));
+await t("RSVP con código incorrecto falla", () => assertFails(db("alice").ref(`${E}/rsvps/alice`).set({ name: "Ana", attending: true, guests: 2, code: "MALO1", ts: SV.TIMESTAMP })));
+await t("RSVP con código correcto", () => assertSucceeds(db("alice").ref(`${E}/rsvps/alice`).set({ name: "Ana", attending: true, guests: 2, message: "hola", code: "CODIGO-1234", ts: SV.TIMESTAMP })));
+await t("RSVP modificar propio", () => assertSucceeds(db("alice").ref(`${E}/rsvps/alice`).set({ name: "Ana", attending: false, guests: 0, code: "CODIGO-1234", ts: SV.TIMESTAMP })));
+await t("RSVP leer propio", () => assertSucceeds(db("alice").ref(`${E}/rsvps/alice`).get()));
+await t("RSVP leer ajeno falla", () => assertFails(db("bob").ref(`${E}/rsvps/alice`).get()));
+await t("RSVP listar falla", () => assertFails(db("bob").ref(`${E}/rsvps`).get()));
+await t("RSVP a nombre de otro falla", () => assertFails(db("bob").ref(`${E}/rsvps/alice`).set({ name: "X", attending: true, guests: 1, code: "CODIGO-1234", ts: SV.TIMESTAMP })));
+await t("escribir config falla", () => assertFails(db("alice").ref(`${E}/config/revealAt`).set(0)));
+
+await env.withSecurityRulesDisabled((c) => c.database().ref(`${E}/config/revealAt`).set(Date.now() - 1000));
+await t("votos visibles tras la revelación", async () => { const s = await assertSucceeds(db(null).ref(`${E}/votes`).get()); if (Object.keys(s.val()).length !== 2) throw new Error("conteo"); });
+await t("votar tras la revelación falla", () => assertFails(vote("dan", "Dan", "dan")));
+
+await env.cleanup();
+console.log(`\n${pass} ok, ${fail} fallos`);
+process.exit(fail ? 1 : 0);
