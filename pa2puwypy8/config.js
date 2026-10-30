@@ -7,11 +7,11 @@ export default {
   eventId: "pa2puwypy8",
   timeZone: "America/Costa_Rica",
   firebase: {
-    apiKey: "REEMPLACE_CON_SU_API_KEY",
-    authDomain: "SU-PROYECTO.firebaseapp.com",
-    databaseURL: "https://SU-PROYECTO-default-rtdb.firebaseio.com",
-    projectId: "SU-PROYECTO",
-    appId: "REEMPLACE_CON_SU_APP_ID",
+    apiKey: "AIzaSyAV_usLV_i2GN_LdMO0arenOOl-dPojG3g",
+    authDomain: "invitacion-revelacion-b4b59.firebaseapp.com",
+    databaseURL: "https://invitacion-revelacion-b4b59-default-rtdb.firebaseio.com",
+    projectId: "invitacion-revelacion-b4b59",
+    appId: "1:484536059106:web:9a5dee125e2bddfb3bcabb",
   },
   texts: {
     // 1. Portada
