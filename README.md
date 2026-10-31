@@ -14,6 +14,7 @@ assets/                    Código compartido por todos los eventos
   js/horse-art.js          Caballito vectorizado (capas de color)
   js/balloons.js           Globos que suben al pasar de sección
   js/sparkles.js           Estrellitas al azar en el fondo
+  js/countdown.js          Contador hasta el gran día (mismo diseño en todas las páginas)
   js/portal.js             Portal de revelación: cuenta regresiva, resultados y confeti
   js/admin.js              Panel del organizador: invitaciones, confirmaciones y votos
   js/reveal-stage.js       Pantalla de revelación en vivo para proyectar (desde el panel)
@@ -27,6 +28,7 @@ tests/                     Pruebas automáticas de las reglas (emulador de Fireb
 pa2puwypy8/                Evento actual (nombre aleatorio)
   config.js                ID del evento, configuración web de Firebase y textos de la invitación
   imagen.jpg               Imagen de la pantalla de revelación (pública)
+  preview.jpg              Imagen de la vista previa al compartir los enlaces
   index.html               Enlace SOLO DE VOTACIÓN
   s25rfxdcespmayzjfizc6had/index.html   Enlace de INVITACIÓN COMPLETA
   bamkb2j7jh7id4jj4y89mamy/index.html   PANEL DEL ORGANIZADOR
@@ -39,6 +41,8 @@ Enlaces una vez publicado (reemplace el usuario y el repositorio si cambian):
 - Panel del organizador: `https://jorge09ha.github.io/event-invitations/pa2puwypy8/bamkb2j7jh7id4jj4y89mamy/`
 
 **El código de acceso va al final del enlace de invitación, después de `#`** (por ejemplo `…/s25rfxdcespmayzjfizc6had/#LUNA-7K4P-29`). Esa parte nunca se envía al servidor de GitHub; la página la usa para leer los detalles del evento en Firebase y para permitir la confirmación. Sin el código, los detalles aparecen como “Por confirmar” y la confirmación no se guarda.
+
+**Vista previa al compartir:** el título, la descripción y la imagen que muestra WhatsApp están en las etiquetas `og:` de cada `index.html`. Son fijos, no cambian con los textos del panel, porque WhatsApp lee la página sin ejecutarla. WhatsApp guarda la vista previa por un tiempo, así que un cambio puede tardar en verse en un enlace ya compartido.
 
 ## La invitación
 
@@ -148,7 +152,7 @@ Opcional pero recomendado: en Google Cloud Console → APIs y servicios → Cred
 
 ## Página de votación: fases
 
-1. **Antes de la revelación:** votación, fecha de revelación, tiempo restante y cuántas personas han votado (sin indicar por qué opción).
+1. **Antes de la revelación:** votación, fecha de revelación con su contador y cuántas personas han votado (sin indicar por qué opción).
 2. **Últimos `countdownSeconds` segundos:** la página cambia sola al portal con cuenta regresiva, sincronizada con la hora del servidor de Firebase.
 3. **Revelación:** el portal se abre y muestra marcador, porcentajes, nombres por opción y confeti. Los resultados se actualizan en tiempo real.
 
@@ -164,5 +168,5 @@ Opcional pero recomendado: en Google Cloud Console → APIs y servicios → Cred
    ```bash
    node -e "const c=require('crypto'),a='abcdefghijkmnpqrstuvwxyz23456789',r=n=>Array.from(c.randomBytes(n),b=>a[b%32]).join('');console.log(r(10),r(24))"
    ```
-2. Copie la carpeta `pa2puwypy8` con el primer nombre, renombre la subcarpeta de la invitación con el segundo y cambie `eventId`, `invitePath` y `texts` en `config.js`. Para la carpeta del panel, genere otro nombre.
+2. Copie la carpeta `pa2puwypy8` con el primer nombre, renombre la subcarpeta de la invitación con el segundo y cambie `eventId`, `invitePath` y `texts` en `config.js`. Para la carpeta del panel, genere otro nombre. Actualice también las direcciones `og:` de cada `index.html` y la imagen `preview.jpg`.
 3. Cargue en Firebase un nuevo nodo `events/<nuevo-id>` como en el paso 2.

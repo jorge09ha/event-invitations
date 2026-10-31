@@ -2,7 +2,8 @@
 //   mode: "full" (invitación completa, ver invitation.js) o "vote" (solo votación)
 //   config: contenido del config.js de la carpeta del evento
 
-import { $, busy, cleanName, nameKey, plural, formatRemaining, formatDate } from "./util.js";
+import { $, busy, cleanName, nameKey, plural, formatDate } from "./util.js";
+import { countdown, startCountdown } from "./countdown.js";
 import { createPortal } from "./portal.js";
 import { carouselSVG, startCarousel } from "./carousel.js";
 import { startSparkles } from "./sparkles.js";
@@ -51,7 +52,7 @@ export const SHELL = `
 
   <section class="card info">
     <p class="info-reveal"></p>
-    <p class="info-remaining"></p>
+    ${countdown("countdown-inline")}
     <p class="info-count muted"></p>
     <button type="button" class="btn btn-primary info-results" hidden>Ver resultados</button>
   </section>
@@ -105,6 +106,7 @@ export async function start({ mode, config }) {
   const timeZone = config.timeZone || "America/Costa_Rica";
 
   $(".info-reveal").textContent = `${texts.voteRevealLabel}: ${formatDate(revealAt, timeZone)}`;
+  startCountdown(data, revealAt);
 
   data.watchVoteCount((n) => {
     $(".info-count").textContent = n ? `${plural(n, "persona ha", "personas han")} votado.` : "Aún nadie ha votado. ¡Sea la primera persona!";
@@ -143,11 +145,7 @@ export async function start({ mode, config }) {
     const now = data.serverNow();
     const next = phaseAt(now);
 
-    if (next === "before") {
-      $(".info-remaining").textContent = revealAt - now < 60000 ? "Falta menos de un minuto." : `Faltan ${formatRemaining(revealAt - now)}.`;
-    } else if (next === "countdown") {
-      portal.countdown(Math.ceil((revealAt - now) / 1000));
-    }
+    if (next === "countdown") portal.countdown(Math.ceil((revealAt - now) / 1000));
 
     if (next !== phase) {
       phase = next;
@@ -155,7 +153,7 @@ export async function start({ mode, config }) {
       if (phase === "revealed") {
         vote.close();
         $(".info-reveal").textContent = "¡Los resultados ya fueron revelados!";
-        $(".info-remaining").textContent = "";
+        $(".countdown").hidden = true;
         $(".info-results").hidden = portal.isVisible;
         if (!portal.isOpen) portal.countdown(0);
         watchResults();

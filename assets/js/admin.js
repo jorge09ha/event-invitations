@@ -2,9 +2,10 @@
 // confirmaciones y votos. Cada invitación es una entrada private/<CÓDIGO> con
 // una copia de los detalles del evento más el nombre del invitado (guest).
 
-import { $, $$, busy, cleanName, formatDate, formatRemaining, nameKey, plural, safeUrl, store } from "./util.js";
+import { $, $$, busy, cleanName, formatDate, nameKey, plural, safeUrl, store } from "./util.js";
 import { DEFAULT_TEXTS, DETAIL_LABELS, TEXT_LABELS } from "./invitation-texts.js";
-import { countdown, DECK, icon, mapLinks, startCountdown } from "./invitation.js";
+import { DECK, icon, mapLinks } from "./invitation.js";
+import { countdown, startCountdown } from "./countdown.js";
 import { configTexts, SHELL } from "./app.js";
 import { startCarousel } from "./carousel.js";
 import { openRevealStage } from "./reveal-stage.js";
@@ -721,7 +722,7 @@ function showVoteDates(form, cfg, timeZone) {
   const revealAt = Number(cfg.revealAt);
   if (!revealAt) return;
   $(".vote-date", form).textContent = formatDate(revealAt, timeZone);
-  $(".info-remaining", form).textContent = `Faltan ${formatRemaining(revealAt - Date.now())}.`;
+  startCountdown({ serverNow: Date.now }, revealAt, [$(".vote-editor .countdown", form)]);
 }
 
 const readField = (el) => (el.value ?? el.textContent).trim();

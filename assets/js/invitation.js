@@ -8,6 +8,7 @@ import { balloonWave } from "./balloons.js";
 import { HORSE_ART } from "./horse-art.js";
 import { startSparkles } from "./sparkles.js";
 import { applyTexts, DEFAULT_TEXTS } from "./invitation-texts.js";
+import { countdown, startCountdown } from "./countdown.js";
 
 const ICONS = {
   date: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
@@ -41,16 +42,6 @@ const ORNAMENT = `<svg class="ornament" viewBox="0 0 140 76" aria-hidden="true">
 
 const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21C5 15.4 2 12.2 2 8.4 2 5.4 4.4 3 7.3 3c1.9 0 3.6 1 4.7 2.6C13.1 4 14.8 3 16.7 3 19.6 3 22 5.4 22 8.4c0 3.8-3 7-10 12.6z"/></svg>';
 const ARROW = '<svg class="btn-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-// Contador hasta el gran día (se usa arriba, fijo, y al final de la última sección).
-export const countdown = (extra = "") => `
-  <div class="countdown ${extra}" role="timer" aria-label="Tiempo para el gran día" hidden>
-    <span><b data-cd="d">00</b><small>días</small></span>
-    <span><b data-cd="h">00</b><small>hrs</small></span>
-    <span><b data-cd="m">00</b><small>min</small></span>
-    <span><b data-cd="s">00</b><small>seg</small></span>
-    <p class="countdown-today" hidden>¡Hoy es el gran día!</p>
-  </div>`;
-
 const CHEVRON_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 
 // También lo usa el panel del organizador para editar los textos sobre la
@@ -187,25 +178,6 @@ export async function startInvitation({ app, data, config, demo }) {
   const state = { confirmed: false };
   const deck = setupDeck(() => state.confirmed);
   setupRsvp(data, code, details, deck, state);
-}
-
-// Contador fijo hasta el gran día (hora del servidor, no la del teléfono).
-export function startCountdown(data, target, boxes = $$(".countdown")) {
-  if (!target) return;
-  const pad = (n) => String(n).padStart(2, "0");
-  boxes.forEach((box) => { box.hidden = false; });
-  function tick() {
-    const left = Math.max(0, target - data.serverNow());
-    const s = Math.floor(left / 1000);
-    const values = { d: Math.floor(s / 86400), h: Math.floor((s % 86400) / 3600), m: Math.floor((s % 3600) / 60), s: s % 60 };
-    for (const box of boxes) {
-      box.classList.toggle("today", !left);
-      $(".countdown-today", box).hidden = Boolean(left);
-      $$("[data-cd]", box).forEach((el) => { el.textContent = pad(values[el.dataset.cd]); });
-    }
-    if (left) setTimeout(tick, 1000 - (data.serverNow() % 1000));
-  }
-  tick();
 }
 
 function renderDetails(d) {

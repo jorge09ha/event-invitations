@@ -52,20 +52,6 @@ export function plural(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-// "Faltan 3 días, 4 h y 12 min" a partir de milisegundos restantes.
-export function formatRemaining(ms) {
-  const totalMin = Math.max(0, Math.floor(ms / 60000));
-  const days = Math.floor(totalMin / 1440);
-  const hours = Math.floor((totalMin % 1440) / 60);
-  const mins = totalMin % 60;
-  const parts = [];
-  if (days) parts.push(plural(days, "día", "días"));
-  if (hours) parts.push(`${hours} h`);
-  if (mins || !parts.length) parts.push(`${mins} min`);
-  if (parts.length === 1) return parts[0];
-  return `${parts.slice(0, -1).join(", ")} y ${parts.at(-1)}`;
-}
-
 export function formatDate(ms, timeZone) {
   return new Intl.DateTimeFormat("es-CR", {
     weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit", timeZone,
