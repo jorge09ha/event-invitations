@@ -59,6 +59,8 @@ const PANEL = `
     ${countdown("countdown-inline")}
   </header>
 
+  <p class="admin-alert" role="alert" hidden>Firebase rechazó una operación y no se guardó. Probablemente las reglas publicadas están desactualizadas: pegue el contenido de database.rules.json en Realtime Database → Reglas y publique.</p>
+
   <div class="admin-backdrop" hidden></div>
   <nav class="admin-menu" id="admin-menu" aria-label="Menú del panel">
     <p class="admin-menu-title">Panel del organizador</p>
@@ -123,7 +125,7 @@ const PANEL = `
 
   <form class="card admin-details" data-panel="details">
     <p class="muted">Solo los ve quien tenga un enlace de invitación válido. Al guardar, se actualizan todas las invitaciones. Los campos vacíos no se muestran.</p>
-    <p class="admin-no-master muted" hidden>Para editar estos datos, primero cárguelos en Firebase (private/&lt;CÓDIGO&gt;).</p>
+    <p class="admin-no-master muted" hidden>No se encontraron los datos del evento en Firebase (private/&lt;CÓDIGO&gt;), así que no se pueden editar.</p>
     <div class="admin-when">
       <label class="field"><span>Fecha</span><input type="date" name="eventDate" required></label>
       <label class="field"><span>Hora</span><input type="time" name="eventTime" required></label>
@@ -340,6 +342,7 @@ function showPanel(app, data, config, demo, user) {
   let priv = {};
   let rsvps = [];
   let phones = {};
+  let privateFailed = false;
   const country = config.phoneCountry || "506";
   const baseTexts = { ...DEFAULT_TEXTS, ...config.texts };
   let savedTexts = {};
@@ -352,6 +355,7 @@ function showPanel(app, data, config, demo, user) {
   const voteUrl = new URL(`../${demo ? location.search : ""}`, location.href).href;
   const render = () => {
     renderInvites(app, data, allTexts(), priv, rsvps, phones, country, inviteUrl);
+    if (privateFailed) $(".admin-summary", app).textContent = "No se pudieron leer las invitaciones. Pueden existir aunque no aparezcan aquí.";
     const message = allTexts().voteShareMessage.replace("{enlace}", voteUrl);
     for (const link of $$(".admin-vote-send", app)) link.href = whatsappUrl("", message);
   };
@@ -400,11 +404,13 @@ function showPanel(app, data, config, demo, user) {
     fillEditors();
   }).catch((err) => console.error(err));
 
-  const onError = (err) => {
-    console.error(err);
-    $(".admin-summary", app).textContent = "No se pudieron leer los datos. Revise que las reglas nuevas estén publicadas.";
-  };
-  data.watchPrivate((value) => { priv = value; render(); fillEditors(); }, onError);
+  const onError = (err) => reportFailure(err);
+  data.watchPrivate((value) => { priv = value; render(); fillEditors(); }, (err) => {
+    reportFailure(err);
+    // Sin esta lectura, una lista vacía no significa que no haya invitaciones.
+    privateFailed = true;
+    render();
+  });
   data.watchTexts((value) => { savedTexts = value; render(); fillEditors(); }, onError);
   data.watchRsvps((value) => { rsvps = value; render(); }, onError);
   data.watchPhones((value) => { phones = value; render(); }, onError);
@@ -483,7 +489,7 @@ function showPanel(app, data, config, demo, user) {
       busy(form, false);
       form.elements.guest.focus();
     } catch (err) {
-      console.error(err);
+      reportFailure(err);
       whatsapp?.close();
       msg.textContent = "No se pudo crear la invitación. Inténtelo de nuevo.";
       busy(form, false);
@@ -514,7 +520,7 @@ function showPanel(app, data, config, demo, user) {
       const bad = badPhones.length ? ` Revise el teléfono de las líneas que quedaron en el cuadro.` : "";
       msg.textContent = `${plural(created, "invitación creada", "invitaciones creadas")}.${skipped}${bad}`;
     } catch (err) {
-      console.error(err);
+      reportFailure(err);
       msg.textContent = "No se pudieron crear las invitaciones. Inténtelo de nuevo.";
     }
     busy(bulkForm, false);
@@ -789,7 +795,7 @@ function setupTextEditor(form, data, baseTexts, getTexts, extra = {}) {
       dirty = false;
       msg.textContent = "Cambios guardados.";
     } catch (err) {
-      console.error(err);
+      reportFailure(err);
       msg.textContent = "No se pudieron guardar los cambios. Inténtelo de nuevo.";
     }
     busy(form, false);
@@ -797,6 +803,16 @@ function setupTextEditor(form, data, baseTexts, getTexts, extra = {}) {
   });
 
   return { fill };
+}
+
+// Registra el error y, si Firebase negó el permiso, muestra el aviso de arriba
+// del panel: la causa suele ser que las reglas publicadas no son las actuales.
+function reportFailure(err) {
+  console.error(err);
+  if (/permission.denied/i.test(`${err?.code} ${err?.message}`)) {
+    const alertBox = $(".admin-alert");
+    if (alertBox) alertBox.hidden = false;
+  }
 }
 
 // Los detalles dentro de la vista de la invitación: solo se muestran, como los
@@ -866,7 +882,10 @@ function setupDetailsForm(form, data, getPriv, inviteUrl, timeZone, onRevealChan
     e.preventDefault();
     const priv = getPriv();
     const code = masterCode(priv);
-    if (!code) return;
+    if (!code) {
+      msg.textContent = "No se pudieron leer los datos del evento, así que no hay nada que guardar. Recargue la página.";
+      return;
+    }
     for (const [key, name] of [["mapsUrl", "Google Maps"], ["wazeUrl", "Waze"]]) {
       const input = $(`[data-d="${key}"]`, form);
       if (input.value.trim() && !safeUrl(input.value.trim())) {
@@ -907,10 +926,12 @@ function setupDetailsForm(form, data, getPriv, inviteUrl, timeZone, onRevealChan
         revealAt = nextReveal;
         onRevealChange(revealAt);
       }
+      msg.classList.remove("admin-error");
       msg.textContent = "Detalles guardados.";
     } catch (err) {
-      console.error(err);
-      msg.textContent = "No se pudieron guardar los detalles. Revise que las reglas nuevas estén publicadas.";
+      reportFailure(err);
+      msg.classList.add("admin-error");
+      msg.textContent = "No se guardó ningún cambio: lo que ve en el formulario todavía no está en Firebase.";
     }
     busy(form, false);
     fill();
@@ -1040,8 +1061,8 @@ function setupAdmins(root, data, user) {
 
   const render = () => list.replaceChildren(...Object.keys(admins).map(adminRow));
   const onError = (err) => {
-    console.error(err);
-    msg.textContent = "No se pudo leer la lista. Revise que las reglas nuevas estén publicadas.";
+    reportFailure(err);
+    msg.textContent = "No se pudo leer la lista de administradores.";
   };
   data.watchAdmins((value) => { admins = value; render(); }, onError);
   data.watchAdminNames((value) => { names = value; render(); }, onError);
@@ -1065,8 +1086,8 @@ function setupAdmins(root, data, user) {
       form.reset();
       msg.textContent = `Listo: ${name} ya tiene acceso. Pídale que recargue la página.`;
     } catch (err) {
-      console.error(err);
-      msg.textContent = "No se pudo dar el permiso. Revise que las reglas nuevas estén publicadas.";
+      reportFailure(err);
+      msg.textContent = "No se pudo dar el permiso.";
     }
     busy(form, false);
   });

@@ -695,6 +695,8 @@ legend { font-weight: 600; font-size: .95rem; margin-bottom: 6px; }
 .admin-admins .admin-phone { font-family: ui-monospace, Consolas, monospace; font-size: .78rem; overflow-wrap: anywhere; }
 .admin-admins .admin-row-main { margin-bottom: 0; }
 .admin-remove { flex: none; padding: 4px 2px; font-size: .88rem; }
+.admin-alert { margin: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--nina-ink); background: color-mix(in srgb, var(--nina) 18%, var(--surface)); color: var(--nina-ink); font-weight: 700; font-size: .95rem; }
+.form-msg.admin-error { color: var(--nina-ink); font-weight: 700; }
 .admin-when { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
 .admin-when input { min-width: 0; }
 .admin-when-help { margin-top: -8px; font-size: .88rem; }

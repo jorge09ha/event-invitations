@@ -91,6 +91,8 @@ await t("admin: fecha que no es número falla", () => assertFails(db("root").ref
 await t("admin: borrar la fecha falla", () => assertFails(db("root").ref(E).update({ "config/revealAt": null })) );
 await t("admin: otros campos de config fallan", () => assertFails(db("root").ref(`${E}/config/publicTitle`).set("x")));
 await t("no admin: cambiar la fecha falla", () => assertFails(db("alice").ref(`${E}/config/revealAt`).set(Date.now() + 7200e3)));
+// Lo mismo que envía «Guardar detalles»: fecha y detalles juntos, con campos vacíos en null.
+await t("admin: guarda fecha y detalles a la vez", () => assertSucceeds(db("root").ref(E).update({ "config/revealAt": Date.now() + 9000e3, "private/CODIGO-1234": { place: "Salón", date: "Sábado", time: "3:00 p. m.", notes: null, showMaps: false }, [`private/${INV}`]: { place: "Salón", date: "Sábado", time: "3:00 p. m.", guest: "María", notes: null } })));
 await env.withSecurityRulesDisabled((c) => c.database().ref(`${E}/config/revealAt`).set(originalReveal));
 await t("admin: edita textos", () => assertSucceeds(db("root").ref(`${E}/texts`).update({ title: "Nuevo", cta: null })));
 await t("textos públicos", async () => { const s = await assertSucceeds(db(null).ref(`${E}/texts`).get()); if (s.val()?.title !== "Nuevo") throw new Error("sin datos"); });
