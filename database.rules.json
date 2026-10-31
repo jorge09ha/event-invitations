@@ -7,9 +7,20 @@
         "config": {
           ".read": true
         },
+        "admins": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid"
+          }
+        },
         "private": {
+          ".read": "auth != null && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",
           "$code": {
-            ".read": true
+            ".read": true,
+            ".write": "auth != null && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",
+            ".validate": "$code.length >= 8 && $code.length <= 64",
+            "guest": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+            }
           }
         },
         "voteCount": {
@@ -25,7 +36,7 @@
           }
         },
         "votes": {
-          ".read": "now >= root.child('events').child($eventId).child('config').child('revealAt').val()",
+          ".read": "now >= root.child('events').child($eventId).child('config').child('revealAt').val() || (auth != null && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true)",
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
             ".write": "auth != null && auth.uid === $uid && !data.exists() && now < root.child('events').child($eventId).child('config').child('revealAt').val()",
@@ -48,10 +59,11 @@
           }
         },
         "rsvps": {
-          "$uid": {
-            ".read": "auth != null && auth.uid === $uid",
-            ".write": "auth != null && auth.uid === $uid && newData.exists()",
-            ".validate": "newData.hasChildren(['name', 'attending', 'guests', 'code', 'ts']) && newData.child('code').isString() && newData.child('code').val().length >= 4 && newData.child('code').val().length <= 64 && root.child('events').child($eventId).child('private').child(newData.child('code').val()).exists()",
+          ".read": "auth != null && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",
+          "$key": {
+            ".read": "auth != null && ($key === auth.uid || root.child('events').child($eventId).child('private').child($key).child('guest').exists())",
+            ".write": "auth != null && newData.exists() && ($key === auth.uid || root.child('events').child($eventId).child('private').child($key).child('guest').exists())",
+            ".validate": "newData.hasChildren(['name', 'attending', 'guests', 'code', 'ts']) && newData.child('code').isString() && newData.child('code').val().length >= 4 && newData.child('code').val().length <= 64 && root.child('events').child($eventId).child('private').child(newData.child('code').val()).exists() && ($key === auth.uid || newData.child('code').val() === $key)",
             "name": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
             },

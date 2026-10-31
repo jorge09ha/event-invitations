@@ -4,7 +4,7 @@
 
 import { nameKey } from "./util.js";
 
-const SDK = "https://www.gstatic.com/firebasejs/10.12.2";
+export const SDK = "https://www.gstatic.com/firebasejs/10.12.2";
 
 export async function createFirebaseData(cfg) {
   const [{ initializeApp }, authMod, dbMod] = await Promise.all([
@@ -83,13 +83,16 @@ export async function createFirebaseData(cfg) {
       }
     },
 
-    async getMyRsvp() {
-      const snap = await get(r(`rsvps/${uid}`));
+    // Con enlace individual, la confirmación se guarda bajo el código de la
+    // invitación (una por persona, aunque abra el enlace en varios teléfonos).
+    // Con el enlace general, bajo el usuario anónimo del navegador.
+    async getMyRsvp(inviteCode) {
+      const snap = await get(r(`rsvps/${inviteCode || uid}`));
       return snap.val();
     },
 
-    async saveRsvp({ name, attending, guests, message, code }) {
-      await set(r(`rsvps/${uid}`), { name, attending, guests, message, code, ts: serverTimestamp() });
+    async saveRsvp({ name, attending, guests, message, code }, inviteCode) {
+      await set(r(`rsvps/${inviteCode || uid}`), { name, attending, guests, message, code, ts: serverTimestamp() });
     },
   };
 }

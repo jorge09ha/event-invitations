@@ -14,7 +14,9 @@ assets/                    Código compartido por todos los eventos
   js/balloons.js           Globos que suben al pasar de sección
   js/sparkles.js           Estrellitas al azar en el fondo
   js/portal.js             Portal de revelación: cuenta regresiva, resultados y confeti
+  js/admin.js              Panel del organizador: invitaciones, confirmaciones y votos
   js/data-firebase.js      Lectura y escritura en Firebase
+  js/admin-firebase.js     Inicio de sesión con Google y datos del panel
   js/data-demo.js          Datos simulados (?demo) para probar sin Firebase
 database.rules.json        Reglas de seguridad de la base de datos
 firebase/seed-ejemplo.json Datos iniciales de ejemplo para importar en Firebase
@@ -24,12 +26,14 @@ pa2puwypy8/                Evento actual (nombre aleatorio)
   config.js                ID del evento, configuración web de Firebase y textos de la invitación
   index.html               Enlace SOLO DE VOTACIÓN
   s25rfxdcespmayzjfizc6had/index.html   Enlace de INVITACIÓN COMPLETA
+  bamkb2j7jh7id4jj4y89mamy/index.html   PANEL DEL ORGANIZADOR
 ```
 
 Enlaces una vez publicado (reemplace el usuario y el repositorio si cambian):
 
 - Solo votación: `https://jorge09ha.github.io/event-invitations/pa2puwypy8/`
 - Invitación completa: `https://jorge09ha.github.io/event-invitations/pa2puwypy8/s25rfxdcespmayzjfizc6had/#CODIGO`
+- Panel del organizador: `https://jorge09ha.github.io/event-invitations/pa2puwypy8/bamkb2j7jh7id4jj4y89mamy/`
 
 **El código de acceso va al final del enlace de invitación, después de `#`** (por ejemplo `…/s25rfxdcespmayzjfizc6had/#LUNA-7K4P-29`). Esa parte nunca se envía al servidor de GitHub; la página la usa para leer los detalles del evento en Firebase y para permitir la confirmación. Sin el código, los detalles aparecen como “Por confirmar” y la confirmación no se guarda.
 
@@ -45,6 +49,29 @@ Secciones a pantalla completa que se recorren con el botón de bajar (o deslizan
 
 Arriba hay un contador regresivo hasta el gran día (`revealAt`, con la hora del servidor). Los textos se editan en `pa2puwypy8/config.js` (`texts`); los datos del lugar, en Firebase.
 
+## Panel del organizador
+
+Permite crear las invitaciones individuales y dar seguimiento sin entrar a la consola de Firebase:
+
+1. **Crear:** pegue los nombres, uno por línea, y toque «Crear invitaciones». Cada invitado recibe un código propio; los nombres repetidos se omiten.
+2. **Enviar:** «WhatsApp» abre el mensaje con el enlace, listo para elegir el contacto; «Copiar enlace» lo copia. El mensaje se cambia en `config.js` con `texts.inviteMessage` (admite `{nombre}` y `{enlace}`).
+3. **Dar seguimiento:** el panel muestra quién confirmó, quién falta y los votos en tiempo real, también antes de la revelación.
+4. **Desactivar:** el enlace de esa persona deja de mostrar los detalles y de aceptar confirmaciones.
+
+Cada invitación es una entrada `private/<CÓDIGO>` con una copia de los detalles del evento más el nombre del invitado (`guest`). Los detalles se copian de la entrada sin `guest` (la del enlace general). Si los cambia en Firebase, toque «Copiar los detalles del evento a todas las invitaciones».
+
+### Activar el panel (una sola vez)
+
+La URL del panel es pública; lo que protege los datos es el inicio de sesión y las reglas.
+
+1. En Firebase, **Authentication → Método de acceso**: active **Google**.
+2. **Authentication → Configuración → Dominios autorizados**: agregue `jorge09ha.github.io`.
+3. **Realtime Database → Reglas**: pegue el contenido actualizado de `database.rules.json` y publique.
+4. Abra el panel y entre con su cuenta de Google. Verá la ruta `events/<id>/admins/<su-uid>`.
+5. **Realtime Database → Datos**: cree esa ruta con el valor booleano `true` y recargue el panel.
+
+Para probarlo sin Firebase, agregue `?demo` al enlace del panel; los cambios quedan solo en memoria.
+
 ## Cómo funciona la seguridad
 
 El repositorio es público (requisito de GitHub Pages gratuito), así que **nada sensible va en el código**. Cualquier persona puede ver los nombres de las carpetas navegando el repositorio en GitHub: la URL larga solo evita que alguien la adivine; la protección real está en Firebase.
@@ -52,11 +79,12 @@ El repositorio es público (requisito de GitHub Pages gratuito), así que **nada
 | Dato | Ruta en Firebase | Quién puede leer | Quién puede escribir |
 |---|---|---|---|
 | Fecha de revelación, título público | `events/<id>/config` | Cualquiera | Solo usted (consola) |
-| Lugar, dirección, hora, dress code | `events/<id>/private/<CÓDIGO>` | Solo quien conozca el código exacto (no se puede listar) | Solo usted (consola) |
-| Votos (nombre + opción) | `events/<id>/votes/<uid>` | Cada persona el suyo; todos **solo a partir de `revealAt`** (hora del servidor) | Un voto por usuario anónimo, antes de `revealAt`, sin poder modificarlo ni borrarlo |
+| Administradores | `events/<id>/admins/<uid>` | Cada cuenta, su propia marca | Solo usted (consola) |
+| Lugar, dirección, hora, dress code, nombre del invitado | `events/<id>/private/<CÓDIGO>` | Quien conozca el código exacto; solo los administradores pueden listar | Administradores |
+| Votos (nombre + opción) | `events/<id>/votes/<uid>` | Cada persona el suyo; los administradores siempre; todos **solo a partir de `revealAt`** (hora del servidor) | Un voto por usuario anónimo, antes de `revealAt`, sin poder modificarlo ni borrarlo |
 | Nombres que ya votaron | `events/<id>/voterNames/<nombre>` | Consulta puntual de un nombre (no se puede listar) | Se reserva junto con el voto; un voto por nombre |
 | Contador de votos | `events/<id>/voteCount` | Cualquiera | Solo +1, y solo junto con un voto nuevo |
-| Confirmaciones de asistencia | `events/<id>/rsvps/<uid>` | Cada persona la suya; usted ve todas en la consola | Solo con el código de acceso correcto |
+| Confirmaciones de asistencia | `events/<id>/rsvps/<código o uid>` | Quien tenga esa invitación, o cada navegador la suya con el enlace general; los administradores ven todas | Solo con un código de acceso válido |
 
 El límite de un voto por persona usa el usuario anónimo de Firebase (por navegador) y el nombre normalizado (sin tildes ni mayúsculas). No es infalible: alguien podría votar desde otro navegador con otro nombre. La votación cierra automáticamente a la hora de revelación.
 
@@ -119,5 +147,5 @@ Opcional pero recomendado: en Google Cloud Console → APIs y servicios → Cred
    ```bash
    node -e "const c=require('crypto'),a='abcdefghijkmnpqrstuvwxyz23456789',r=n=>Array.from(c.randomBytes(n),b=>a[b%32]).join('');console.log(r(10),r(24))"
    ```
-2. Copie la carpeta `pa2puwypy8` con el primer nombre, renombre la subcarpeta con el segundo y cambie `eventId` y `texts` en `config.js`.
+2. Copie la carpeta `pa2puwypy8` con el primer nombre, renombre la subcarpeta de la invitación con el segundo y cambie `eventId`, `invitePath` y `texts` en `config.js`. Para la carpeta del panel, genere otro nombre.
 3. Cargue en Firebase un nuevo nodo `events/<nuevo-id>` como en el paso 2.

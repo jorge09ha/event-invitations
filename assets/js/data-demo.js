@@ -1,6 +1,6 @@
 // Datos simulados para probar el diseño y el portal sin Firebase.
 // Se activa agregando ?demo a la URL (revelación a 7 días; ?demo=30 revela en 30 segundos).
-// Código de acceso de la demostración: DEMO
+// Código de acceso de la demostración: DEMO (general) o DEMO-MARIA (individual).
 
 import { nameKey } from "./util.js";
 
@@ -9,6 +9,47 @@ const SAMPLE = [
   ["Sofía", "nina"], ["Diego", "nino"], ["Valeria", "nina"], ["Andrés", "nino"],
   ["Daniela", "nina"], ["Pablo", "nino"], ["Gabriela", "nina"],
 ];
+
+const DETAILS = {
+  title: "Revelación de sexo del bebé",
+  place: "Salón de ejemplo",
+  address: "100 m norte del parque central, San José",
+  mapsUrl: "https://maps.google.com/?q=9.9333,-84.0833",
+  date: "Sábado 12 de diciembre",
+  time: "3:00 p. m.",
+  dressCode: "Asistir con camisa blanca.",
+  rsvpBy: "1 de diciembre",
+};
+
+// Panel del organizador sin Firebase: sesión simulada y cambios solo en memoria.
+export function createDemoAdminData() {
+  let priv = {
+    DEMO: DETAILS,
+    "DEMO-MARIA": { ...DETAILS, guest: "María Pérez" },
+    "DEMO-JUAN": { ...DETAILS, guest: "Juan Rojas" },
+  };
+  const rsvps = [
+    { name: "María Pérez", attending: true, code: "DEMO-MARIA" },
+    { name: "Laura Mora", attending: true, code: "DEMO" },
+  ];
+  const votes = SAMPLE.slice(0, 6).map(([name, choice]) => ({ name, choice }));
+  let onPrivate = () => {};
+
+  return {
+    onUser(cb) { cb({ uid: "demo", email: "demo@ejemplo.com" }); },
+    async signIn() {},
+    async signOut() {},
+    async isAdmin() { return true; },
+    watchPrivate(cb) { onPrivate = cb; cb(priv); },
+    watchRsvps(cb) { cb(rsvps); },
+    watchVotes(cb) { cb(votes); },
+    async updatePrivate(changes) {
+      priv = { ...priv, ...changes };
+      for (const code of Object.keys(changes)) if (!changes[code]) delete priv[code];
+      onPrivate(priv);
+    },
+  };
+}
 
 export function createDemoData(secondsToReveal) {
   const revealAt = Date.now() + secondsToReveal * 1000;
@@ -66,17 +107,8 @@ export function createDemoData(secondsToReveal) {
     },
     async getPrivate(code) {
       await wait();
-      if (code !== "DEMO") return null;
-      return {
-        title: "Revelación de sexo del bebé",
-        place: "Salón de ejemplo",
-        address: "100 m norte del parque central, San José",
-        mapsUrl: "https://maps.google.com/?q=9.9333,-84.0833",
-        date: "Sábado 12 de diciembre",
-        time: "3:00 p. m.",
-        dressCode: "Asistir con camisa blanca.",
-        rsvpBy: "1 de diciembre",
-      };
+      if (code === "DEMO-MARIA") return { ...DETAILS, guest: "María Pérez" };
+      return code === "DEMO" ? DETAILS : null;
     },
     async getMyRsvp() { return rsvp; },
     async saveRsvp(data) {

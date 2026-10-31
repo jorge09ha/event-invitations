@@ -6,6 +6,8 @@
 export default {
   eventId: "pa2puwypy8",
   timeZone: "America/Costa_Rica",
+  // Carpeta de la invitación completa, para que el panel arme los enlaces.
+  invitePath: "s25rfxdcespmayzjfizc6had",
   firebase: {
     apiKey: "AIzaSyAV_usLV_i2GN_LdMO0arenOOl-dPojG3g",
     authDomain: "invitacion-revelacion-b4b59.firebaseapp.com",

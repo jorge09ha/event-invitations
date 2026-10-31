@@ -72,6 +72,7 @@ const DECK = `
     <section class="slide slide-cover" aria-label="Portada">
       <div class="slide-inner">
         <div class="cover-art reveal">${carouselSVG()}</div>
+        <p class="hero-guest reveal" hidden></p>
         <p class="hero-kicker reveal" data-t="kicker"></p>
         <h1 class="hero-title reveal" data-t="title"></h1>
         <p class="hero-subtitle reveal" data-t="subtitle"></p>
@@ -181,6 +182,11 @@ export async function startInvitation({ app, data, config, demo }) {
     el.textContent = texts[el.dataset.t] || "";
     el.hidden = !el.textContent;
   });
+
+  if (details?.guest) {
+    $(".hero-guest").textContent = `Invitación para ${details.guest}`;
+    $(".hero-guest").hidden = false;
+  }
 
   renderDetails(details);
   // La encuesta es la página de solo votación (carpeta del evento); en la
@@ -345,7 +351,11 @@ async function setupRsvp(data, code, details, deck, state) {
     form.name.focus();
   });
 
-  const prev = await data.getMyRsvp().catch(() => null);
+  // Invitación individual: el nombre ya viene escrito (se puede corregir).
+  const inviteCode = details?.guest ? code : null;
+  if (inviteCode) form.name.value = details.guest;
+
+  const prev = await data.getMyRsvp(inviteCode).catch(() => null);
   if (prev) {
     form.name.value = prev.name;
     confirmedAs(prev.name);
@@ -362,7 +372,7 @@ async function setupRsvp(data, code, details, deck, state) {
     busy(form, true);
     msg.textContent = "";
     try {
-      await data.saveRsvp({ name, attending: true, guests: 1, message: "", code });
+      await data.saveRsvp({ name, attending: true, guests: 1, message: "", code }, inviteCode);
       form.name.blur();
       confirmedAs(name);
       setTimeout(() => deck.go(1), 500);

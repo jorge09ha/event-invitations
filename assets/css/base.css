@@ -678,6 +678,31 @@ legend { font-weight: 600; font-size: .95rem; margin-bottom: 6px; }
 .info-remaining:empty { display: none; }
 .info-results { margin-top: 8px; }
 
+/* --- Panel del organizador --- */
+
+.hero-guest { font-weight: 700; color: var(--cafe-ink); margin-bottom: 4px; }
+.admin-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.admin-head h1 { margin: 0; font-size: 1.9rem; color: var(--text); }
+.admin-list { list-style: none; margin: 8px 0; padding: 0; }
+.admin-row { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.admin-row:last-child { border-bottom: 0; }
+.admin-row-main { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.admin-name { font-weight: 700; overflow-wrap: anywhere; }
+.admin-status {
+  flex: none;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: .85rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--arena) 40%, #fff);
+  color: var(--cafe-ink);
+}
+.admin-status.done { background: color-mix(in srgb, var(--verde) 35%, #fff); color: var(--nino-ink); }
+.admin-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.admin-actions .btn { padding: 10px 12px; font-size: .95rem; }
+.admin-revoke { grid-column: 1 / -1; justify-self: end; padding: 2px 8px; font-size: .9rem; }
+.admin-votes h3 { font-size: 1rem; }
+
 /* --- Portal --- */
 
 .portal {

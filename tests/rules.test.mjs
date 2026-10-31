@@ -7,7 +7,8 @@ const E = "events/ev1";
 const env = await initializeTestEnvironment({ projectId: "demo-test", database: { rules: readFileSync("../database.rules.json", "utf8"), host: "127.0.0.1", port: 9419 } });
 let pass = 0, fail = 0;
 async function t(name, fn) { try { await fn(); pass++; console.log("ok  ", name); } catch (e) { fail++; console.log("FAIL", name, e.message); } }
-const seed = (revealAt) => env.withSecurityRulesDisabled((c) => c.database().ref(E).set({ config: { revealAt, countdownSeconds: 10, publicTitle: "x" }, voteCount: 0, private: { "CODIGO-1234": { address: "secreta" } } }));
+const INV = "INVI-1111-2222";
+const seed = (revealAt) => env.withSecurityRulesDisabled((c) => c.database().ref(E).set({ config: { revealAt, countdownSeconds: 10, publicTitle: "x" }, voteCount: 0, admins: { root: true }, private: { "CODIGO-1234": { address: "secreta" }, [INV]: { guest: "María", address: "secreta" } } }));
 const db = (uid) => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).database();
 const vote = (uid, name, key, choice = "nino", extra = {}) => db(uid).ref(E).update({ [`votes/${uid}`]: { name, nameKey: key, choice, ts: SV.TIMESTAMP, ...extra }, [`voterNames/${key}`]: uid, voteCount: SV.increment(1) });
 
@@ -42,6 +43,26 @@ await t("RSVP leer ajeno falla", () => assertFails(db("bob").ref(`${E}/rsvps/ali
 await t("RSVP listar falla", () => assertFails(db("bob").ref(`${E}/rsvps`).get()));
 await t("RSVP a nombre de otro falla", () => assertFails(db("bob").ref(`${E}/rsvps/alice`).set({ name: "X", attending: true, guests: 1, code: "CODIGO-1234", ts: SV.TIMESTAMP })));
 await t("escribir config falla", () => assertFails(db("alice").ref(`${E}/config/revealAt`).set(0)));
+
+const rsvp = (code, name = "María") => ({ name, attending: true, guests: 1, message: "", code, ts: SV.TIMESTAMP });
+await t("invitación individual: confirmar con su código", () => assertSucceeds(db("alice").ref(`${E}/rsvps/${INV}`).set(rsvp(INV))));
+await t("invitación individual: otro navegador actualiza la misma", () => assertSucceeds(db("bob").ref(`${E}/rsvps/${INV}`).set(rsvp(INV, "María P."))));
+await t("invitación individual: leer con el código", () => assertSucceeds(db("bob").ref(`${E}/rsvps/${INV}`).get()));
+await t("invitación individual: código distinto a la ruta falla", () => assertFails(db("bob").ref(`${E}/rsvps/${INV}`).set(rsvp("CODIGO-1234"))));
+await t("el código general no es una invitación individual", () => assertFails(db("bob").ref(`${E}/rsvps/CODIGO-1234`).set(rsvp("CODIGO-1234"))));
+await t("confirmación con ruta inventada falla", () => assertFails(db("bob").ref(`${E}/rsvps/INVENTADO-1`).set(rsvp("CODIGO-1234"))));
+await t("admin: lista invitaciones", () => assertSucceeds(db("root").ref(`${E}/private`).get()));
+await t("admin: lista confirmaciones", () => assertSucceeds(db("root").ref(`${E}/rsvps`).get()));
+await t("admin: ve los votos antes de la revelación", () => assertSucceeds(db("root").ref(`${E}/votes`).get()));
+await t("admin: crea invitación", () => assertSucceeds(db("root").ref(`${E}/private`).update({ "NUEVA-1234-5678": { guest: "Juan", address: "secreta" } })));
+await t("admin: código corto falla", () => assertFails(db("root").ref(`${E}/private/CORTO`).set({ guest: "Juan" })));
+await t("admin: desactiva invitación", () => assertSucceeds(db("root").ref(`${E}/private`).update({ "NUEVA-1234-5678": null })));
+await t("invitación desactivada ya no confirma", () => assertFails(db("bob").ref(`${E}/rsvps/NUEVA-1234-5678`).set(rsvp("NUEVA-1234-5678"))));
+await t("no admin: crear invitación falla", () => assertFails(db("alice").ref(`${E}/private/HACK-1234-5678`).set({ guest: "X" })));
+await t("no admin: desactivar invitación falla", () => assertFails(db("alice").ref(`${E}/private/${INV}`).remove()));
+await t("no admin: hacerse administrador falla", () => assertFails(db("alice").ref(`${E}/admins/alice`).set(true)));
+await t("no admin: leer administradores falla", () => assertFails(db("alice").ref(`${E}/admins`).get()));
+await t("admin: lee su propia marca", () => assertSucceeds(db("root").ref(`${E}/admins/root`).get()));
 
 await env.withSecurityRulesDisabled((c) => c.database().ref(`${E}/config/revealAt`).set(Date.now() - 1000));
 await t("votos visibles tras la revelación", async () => { const s = await assertSucceeds(db(null).ref(`${E}/votes`).get()); if (Object.keys(s.val()).length !== 2) throw new Error("conteo"); });
