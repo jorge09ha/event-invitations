@@ -98,19 +98,19 @@ export function createPortal({ onClose }) {
   };
 }
 
-function tally(votes) {
+export function tally(votes) {
   const nino = votes.filter((v) => v.choice === "nino");
   const nina = votes.filter((v) => v.choice === "nina");
   return { nino, nina, total: nino.length + nina.length };
 }
 
-function winnerOf(votes) {
+export function winnerOf(votes) {
   const { nino, nina } = tally(votes);
   if (nino.length === nina.length) return "empate";
   return nino.length > nina.length ? "nino" : "nina";
 }
 
-function percentages(a, b) {
+export function percentages(a, b) {
   const total = a + b;
   if (!total) return [0, 0];
   const pa = Math.round((a / total) * 100);
@@ -169,7 +169,7 @@ function fillNames(ul, votes) {
   }
 }
 
-function confetti(canvas, winner) {
+export function confetti(canvas, winner) {
   const css = getComputedStyle(document.documentElement);
   const color = (name) => css.getPropertyValue(name).trim();
   const [nino, nina, dorado, crema] = ["--nino", "--nina", "--dorado", "--crema"].map(color);

@@ -8,8 +8,32 @@
           ".read": true
         },
         "admins": {
+          ".read": "auth != null && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",
           "$uid": {
-            ".read": "auth != null && auth.uid === $uid"
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid !== $uid && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",
+            ".validate": "newData.val() === true && $uid.matches(/^[A-Za-z0-9]{20,40}$/)"
+          }
+        },
+        "adminNames": {
+          ".read": "auth != null && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",
+          "$uid": {
+            ".write": "auth != null && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+          }
+        },
+        "texts": {
+          ".read": true,
+          ".write": "auth != null && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",
+          "$key": {
+            ".validate": "newData.isString() && newData.val().length <= 1000"
+          }
+        },
+        "guestPhones": {
+          ".read": "auth != null && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",
+          "$code": {
+            ".write": "auth != null && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",
+            ".validate": "newData.isString() && newData.val().matches(/^[0-9]{8,15}$/)"
           }
         },
         "private": {

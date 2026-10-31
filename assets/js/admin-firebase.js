@@ -30,11 +30,25 @@ export async function createAdminData(cfg) {
       return snap.val() === true;
     },
 
+    async getConfig() {
+      const snap = await get(r("config"));
+      return snap.val() || {};
+    },
+
     watchPrivate: (cb, onError) => onValue(r("private"), (snap) => cb(snap.val() || {}), onError),
     watchRsvps: (cb, onError) => onValue(r("rsvps"), (snap) => cb(Object.values(snap.val() || {})), onError),
     watchVotes: (cb, onError) => onValue(r("votes"), (snap) => cb(Object.values(snap.val() || {})), onError),
 
+    watchAdmins: (cb, onError) => onValue(r("admins"), (snap) => cb(snap.val() || {}), onError),
+    watchAdminNames: (cb, onError) => onValue(r("adminNames"), (snap) => cb(snap.val() || {}), onError),
+    watchPhones: (cb, onError) => onValue(r("guestPhones"), (snap) => cb(snap.val() || {}), onError),
+    watchTexts: (cb, onError) => onValue(r("texts"), (snap) => cb(snap.val() || {}), onError),
+
     // Crea o reemplaza invitaciones; un valor null desactiva esa invitación.
     updatePrivate: (changes) => update(r("private"), changes),
+    // Varias rutas del evento a la vez: se guardan todas o ninguna.
+    updateEvent: (changes) => update(ref(db, `events/${cfg.eventId}`), changes),
+    // Un valor null vuelve al texto original.
+    updateTexts: (changes) => update(r("texts"), changes),
   };
 }

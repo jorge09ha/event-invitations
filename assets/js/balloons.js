@@ -44,9 +44,11 @@ function balloonSVG(color, withString) {
  * @param {object} opts
  * @param {() => void} [opts.onCovered] se llama cuando el contenido está tapado
  * @param {boolean} [opts.cover] false = solo festejo, sin tapar el contenido
+ * @param {HTMLElement} [opts.parent] dónde van los globos (en pantalla completa,
+ *   solo se ve lo que esté dentro del elemento a pantalla completa)
  * @returns {Promise<void>} se resuelve cuando ya se puede volver a navegar
  */
-export function balloonWave({ onCovered, cover = true } = {}) {
+export function balloonWave({ onCovered, cover = true, parent = document.body } = {}) {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
     onCovered?.();
     return Promise.resolve();
@@ -123,7 +125,7 @@ export function balloonWave({ onCovered, cover = true } = {}) {
     return rise.finished.then(() => el.remove());
   });
 
-  document.body.append(layer);
+  parent.append(layer);
   Promise.all(rides).then(() => layer.remove());
 
   if (!cover) return Promise.resolve();

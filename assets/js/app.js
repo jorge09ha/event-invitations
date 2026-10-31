@@ -6,36 +6,47 @@ import { $, busy, cleanName, nameKey, plural, formatRemaining, formatDate } from
 import { createPortal } from "./portal.js";
 import { carouselSVG, startCarousel } from "./carousel.js";
 import { startSparkles } from "./sparkles.js";
+import { applyTexts, DEFAULT_TEXTS } from "./invitation-texts.js";
 
 const LABEL = { nino: "Niño", nina: "Niña" };
 
-const SHELL = `
+// Título y subtítulo de la configuración del evento, antes de editarlos en el panel.
+export function configTexts(cfg) {
+  return {
+    ...(cfg.publicTitle && { voteTitle: cfg.publicTitle }),
+    ...(cfg.publicSubtitle && { voteSubtitle: cfg.publicSubtitle }),
+  };
+}
+
+// También lo usa el panel del organizador para editar los textos sobre la
+// propia página.
+export const SHELL = `
   <header class="hero">
     <div class="hero-art">${carouselSVG()}</div>
-    <p class="hero-kicker">Revelación</p>
-    <h1 class="hero-title"></h1>
-    <p class="hero-subtitle"></p>
+    <p class="hero-kicker" data-t="voteKicker"></p>
+    <h1 class="hero-title" data-t="voteTitle"></h1>
+    <p class="hero-subtitle" data-t="voteSubtitle"></p>
   </header>
 
   <section class="card vote">
-    <h2>¿Niño o niña?</h2>
+    <h2 data-t="voteQuestion"></h2>
     <form class="vote-form">
       <label class="field">
-        <span>Su nombre</span>
+        <span data-t="voteNameLabel"></span>
         <input name="name" autocomplete="name" required maxlength="40">
       </label>
       <div class="vote-options" role="radiogroup" aria-label="Su voto">
         <label class="vote-option nino"><input type="radio" name="choice" value="nino" required><span>Niño</span></label>
         <label class="vote-option nina"><input type="radio" name="choice" value="nina"><span>Niña</span></label>
       </div>
-      <button class="btn btn-primary" type="submit">Votar</button>
+      <button class="btn btn-primary vote-submit" type="submit" data-t="voteButton"></button>
       <p class="form-msg" role="status"></p>
     </form>
     <div class="vote-done" hidden>
       <p class="vote-done-title"></p>
-      <p class="muted">Su voto quedó registrado. Los resultados se revelan el día del evento.</p>
+      <p class="muted" data-t="voteDoneNote"></p>
     </div>
-    <p class="vote-closed muted" hidden>La votación ya cerró.</p>
+    <p class="vote-closed muted" hidden><span data-t="voteClosed"></span></p>
   </section>
 
   <section class="card info">
@@ -79,7 +90,12 @@ export async function start({ mode, config }) {
     return fatal(app, err);
   }
 
+  // Si no se pueden leer los textos del panel, quedan los del config.js.
+  const saved = await data.getTexts().catch(() => null);
+  const texts = { ...DEFAULT_TEXTS, ...config.texts, ...configTexts(cfg), ...saved };
+
   app.innerHTML = SHELL;
+  applyTexts(app, texts);
   startCarousel($(".carousel", app));
   startSparkles(document.body);
   app.classList.remove("loading");
@@ -88,9 +104,7 @@ export async function start({ mode, config }) {
   const countdownMs = (Number(cfg.countdownSeconds) || 10) * 1000;
   const timeZone = config.timeZone || "America/Costa_Rica";
 
-  $(".hero-title").textContent = cfg.publicTitle || "¿Niño o niña?";
-  $(".hero-subtitle").textContent = cfg.publicSubtitle || "";
-  $(".info-reveal").textContent = `Revelación de resultados: ${formatDate(revealAt, timeZone)}`;
+  $(".info-reveal").textContent = `${texts.voteRevealLabel}: ${formatDate(revealAt, timeZone)}`;
 
   data.watchVoteCount((n) => {
     $(".info-count").textContent = n ? `${plural(n, "persona ha", "personas han")} votado.` : "Aún nadie ha votado. ¡Sea la primera persona!";

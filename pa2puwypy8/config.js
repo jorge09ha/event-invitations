@@ -8,6 +8,11 @@ export default {
   timeZone: "America/Costa_Rica",
   // Carpeta de la invitación completa, para que el panel arme los enlaces.
   invitePath: "s25rfxdcespmayzjfizc6had",
+  // Imagen de la pantalla de revelación, dentro de la carpeta del evento. Es
+  // pública, como todo el repositorio.
+  stageImage: "imagen.jpg",
+  // Código de país para los teléfonos de 8 dígitos que se escriben en el panel.
+  phoneCountry: "506",
   firebase: {
     apiKey: "AIzaSyAV_usLV_i2GN_LdMO0arenOOl-dPojG3g",
     authDomain: "invitacion-revelacion-b4b59.firebaseapp.com",

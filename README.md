@@ -9,12 +9,14 @@ assets/                    Código compartido por todos los eventos
   css/base.css             Estilos y paleta (variables de :root), mobile first
   js/app.js                Arranque de las páginas y página de solo votación (fases y portal)
   js/invitation.js         Invitación por secciones: carta, confirmación, contador, agradecimiento
+  js/invitation-texts.js   Textos por defecto y campos editables desde el panel
   js/carousel.js           Carrusel giratorio con caballitos (SVG animado)
   js/horse-art.js          Caballito vectorizado (capas de color)
   js/balloons.js           Globos que suben al pasar de sección
   js/sparkles.js           Estrellitas al azar en el fondo
   js/portal.js             Portal de revelación: cuenta regresiva, resultados y confeti
   js/admin.js              Panel del organizador: invitaciones, confirmaciones y votos
+  js/reveal-stage.js       Pantalla de revelación en vivo para proyectar (desde el panel)
   js/data-firebase.js      Lectura y escritura en Firebase
   js/admin-firebase.js     Inicio de sesión con Google y datos del panel
   js/data-demo.js          Datos simulados (?demo) para probar sin Firebase
@@ -24,6 +26,7 @@ tests/                     Pruebas automáticas de las reglas (emulador de Fireb
 
 pa2puwypy8/                Evento actual (nombre aleatorio)
   config.js                ID del evento, configuración web de Firebase y textos de la invitación
+  imagen.jpg               Imagen de la pantalla de revelación (pública)
   index.html               Enlace SOLO DE VOTACIÓN
   s25rfxdcespmayzjfizc6had/index.html   Enlace de INVITACIÓN COMPLETA
   bamkb2j7jh7id4jj4y89mamy/index.html   PANEL DEL ORGANIZADOR
@@ -53,12 +56,20 @@ Arriba hay un contador regresivo hasta el gran día (`revealAt`, con la hora del
 
 Permite crear las invitaciones individuales y dar seguimiento sin entrar a la consola de Firebase:
 
-1. **Crear:** pegue los nombres, uno por línea, y toque «Crear invitaciones». Cada invitado recibe un código propio; los nombres repetidos se omiten.
-2. **Enviar:** «WhatsApp» abre el mensaje con el enlace, listo para elegir el contacto; «Copiar enlace» lo copia. El mensaje se cambia en `config.js` con `texts.inviteMessage` (admite `{nombre}` y `{enlace}`).
+1. **Crear:** escriba el nombre y, si lo tiene, el teléfono. Cada invitado recibe un código propio; los nombres repetidos se rechazan. Para varias personas, use «Agregar varias personas a la vez», con una línea `nombre, teléfono` por persona.
+2. **Enviar:** con teléfono, «Crear y enviar por WhatsApp» abre el chat de esa persona con el mensaje listo; solo falta tocar enviar. «Enviar WhatsApp» en la lista hace lo mismo después; sin teléfono, WhatsApp pide elegir el contacto. Los números de 8 dígitos usan el código de país de `phoneCountry` en `config.js`.
+   El enlace general de votación se comparte desde la tarjeta **Enlace de votación**, en **Ver votos**; su mensaje se cambia en **Modificar textos → Votación**.
 3. **Dar seguimiento:** el panel muestra quién confirmó, quién falta y los votos en tiempo real, también antes de la revelación.
 4. **Desactivar:** el enlace de esa persona deja de mostrar los detalles y de aceptar confirmaciones.
+5. **Detalles del gran día:** su propia sección del menú cambia fecha, hora, lugar, dirección, enlaces de Google Maps y de Waze, dress code, indicaciones y fecha límite en todas las invitaciones. Cada enlace tiene una casilla para mostrarlo u ocultarlo en la invitación. El contador de arriba del panel y la revelación usan `revealAt`, que sigue en Firebase; si cambia el día del evento, hay que actualizar ambos.
+   **Editar textos:** en el menú, **Modificar textos → Invitación** muestra toda la invitación en una sola página, sin globos, en el mismo orden. Se toca cada texto marcado para cambiarlo (los detalles solo se muestran); más abajo está el mensaje de WhatsApp. **Modificar textos → Votación** hace lo mismo con la página de votación, con sus estados uno debajo del otro. Un texto vacío vuelve al original (`config.js`, o `publicTitle` y `publicSubtitle` en la votación).
+6. **Revelar en vivo:** **Revelación de sexo** abre una pantalla para proyectar. Al abrirla empieza una apertura automática: latido con volumen gradual, ultrasonido con los nombres de quienes votaron girando alrededor y agradecimiento. Con «Ver quiénes votaron» muestra los nombres a medida que votan, sin indicar su voto, y con «Revelar resultados» pasa a la cuenta regresiva, las barras, los nombres por opción, el confeti y los globos. Es independiente de `revealAt`: los invitados siguen viendo los resultados a esa hora.
 
-Cada invitación es una entrada `private/<CÓDIGO>` con una copia de los detalles del evento más el nombre del invitado (`guest`). Los detalles se copian de la entrada sin `guest` (la del enlace general). Si los cambia en Firebase, toque «Copiar los detalles del evento a todas las invitaciones».
+   **La imagen de la apertura** es `pa2puwypy8/imagen.jpg`, indicada en `stageImage` de `config.js`. Está en el repositorio, así que **es pública**: cualquiera puede verla si la busca. El original sin procesar queda en `firebase/ultrasonido.privado.jpg`, que Git ignora. Para cambiarla, reemplace el archivo y publique.
+
+   En **Ver votos**, los nombres están ocultos hasta confirmar, y se ocultan de nuevo al salir de esa sección.
+
+Los textos editados se guardan en `texts/` y tienen prioridad sobre `config.js`. Cada invitación es una entrada `private/<CÓDIGO>` con una copia de los detalles del evento más el nombre del invitado (`guest`). Los detalles se copian de la entrada sin `guest` (la del enlace general); al guardarlos en el panel, se actualizan todas. Si los cambia directamente en Firebase, las invitaciones no se actualizan.
 
 ### Activar el panel (una sola vez)
 
@@ -70,7 +81,11 @@ La URL del panel es pública; lo que protege los datos es el inicio de sesión y
 4. Abra el panel y entre con su cuenta de Google. Verá la ruta `events/<id>/admins/<su-uid>`.
 5. **Realtime Database → Datos**: cree esa ruta con el valor booleano `true` y recargue el panel.
 
-Para probarlo sin Firebase, agregue `?demo` al enlace del panel; los cambios quedan solo en memoria.
+### Más administradores
+
+Los siguientes se agregan desde el panel, en **Administradores**: envíe el enlace a la persona, ella entra con su cuenta de Google y le pasa el código que aparece, y usted lo agrega con **Dar permiso**. Cualquier administrador puede dar o quitar acceso a otros, pero no quitárselo a sí mismo. Si ninguno pudiera entrar, el acceso se recupera desde la consola de Firebase, en `admins`.
+
+Para probarlo sin Firebase, agregue `?demo` al enlace del panel. Las invitaciones, los detalles y los textos que cambie en la demostración quedan solo en ese navegador, y se ven al abrir la invitación con `?demo`.
 
 ## Cómo funciona la seguridad
 
@@ -79,7 +94,9 @@ El repositorio es público (requisito de GitHub Pages gratuito), así que **nada
 | Dato | Ruta en Firebase | Quién puede leer | Quién puede escribir |
 |---|---|---|---|
 | Fecha de revelación, título público | `events/<id>/config` | Cualquiera | Solo usted (consola) |
-| Administradores | `events/<id>/admins/<uid>` | Cada cuenta, su propia marca | Solo usted (consola) |
+| Administradores | `events/<id>/admins/<uid>` y `adminNames/<uid>` | Cada cuenta, su propia marca; los administradores, toda la lista | Administradores (no sobre sí mismos); el primero, en la consola |
+| Textos de la invitación | `events/<id>/texts` | Cualquiera | Administradores |
+| Teléfonos de los invitados | `events/<id>/guestPhones/<CÓDIGO>` | Solo administradores (ni con el enlace se pueden leer) | Administradores |
 | Lugar, dirección, hora, dress code, nombre del invitado | `events/<id>/private/<CÓDIGO>` | Quien conozca el código exacto; solo los administradores pueden listar | Administradores |
 | Votos (nombre + opción) | `events/<id>/votes/<uid>` | Cada persona el suyo; los administradores siempre; todos **solo a partir de `revealAt`** (hora del servidor) | Un voto por usuario anónimo, antes de `revealAt`, sin poder modificarlo ni borrarlo |
 | Nombres que ya votaron | `events/<id>/voterNames/<nombre>` | Consulta puntual de un nombre (no se puede listar) | Se reserva junto con el voto; un voto por nombre |

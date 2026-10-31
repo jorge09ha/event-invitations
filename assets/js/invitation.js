@@ -7,20 +7,7 @@ import { carouselSVG, startCarousel } from "./carousel.js";
 import { balloonWave } from "./balloons.js";
 import { HORSE_ART } from "./horse-art.js";
 import { startSparkles } from "./sparkles.js";
-
-// Textos por defecto; cada evento los reemplaza con "texts" en su config.js.
-const DEFAULT_TEXTS = {
-  kicker: "¡Una dulce sorpresa está por llegar!",
-  title: "¿Niño o niña?",
-  subtitle: "",
-  cta: "",
-  welcome: "",
-  teaser: "",
-  detailsTitle: "Detalles del evento",
-  rsvp: "",
-  farewell: "",
-  farewellClosing: "",
-};
+import { applyTexts, DEFAULT_TEXTS } from "./invitation-texts.js";
 
 const ICONS = {
   date: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
@@ -30,7 +17,7 @@ const ICONS = {
   notes: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
 };
 
-const icon = (name) =>
+export const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
 
 // Adorno de las secciones de texto: el caballito del carrusel con estrellitas.
@@ -55,7 +42,7 @@ const ORNAMENT = `<svg class="ornament" viewBox="0 0 140 76" aria-hidden="true">
 const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21C5 15.4 2 12.2 2 8.4 2 5.4 4.4 3 7.3 3c1.9 0 3.6 1 4.7 2.6C13.1 4 14.8 3 16.7 3 19.6 3 22 5.4 22 8.4c0 3.8-3 7-10 12.6z"/></svg>';
 const ARROW = '<svg class="btn-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 // Contador hasta el gran día (se usa arriba, fijo, y al final de la última sección).
-const countdown = (extra = "") => `
+export const countdown = (extra = "") => `
   <div class="countdown ${extra}" role="timer" aria-label="Tiempo para el gran día" hidden>
     <span><b data-cd="d">00</b><small>días</small></span>
     <span><b data-cd="h">00</b><small>hrs</small></span>
@@ -66,7 +53,9 @@ const countdown = (extra = "") => `
 
 const CHEVRON_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 
-const DECK = `
+// También lo usa el panel del organizador para editar los textos sobre la
+// propia invitación.
+export const DECK = `
   ${HORSE_DEFS}
   <div class="deck">
     <section class="slide slide-cover" aria-label="Portada">
@@ -104,18 +93,19 @@ const DECK = `
             <div class="env-seal">${HEART}</div>
           </div>
         </div>
-        <p class="env-hint reveal">Toque la carta para abrirla</p>
+        <p class="env-hint reveal" data-t="envHint"></p>
 
         <div class="letter" hidden>
           <div class="letter-inner">
             <div class="face front">
               <h2 class="slide-title" data-t="detailsTitle"></h2>
               <ul class="detail-list"></ul>
-              <a class="btn btn-ghost details-map" target="_blank" rel="noopener" hidden>Abrir en el mapa</a>
-              <button type="button" class="btn btn-primary btn-big flip-to-back">Confirmar asistencia ${ARROW}</button>
+              <a class="btn btn-ghost details-map" target="_blank" rel="noopener" hidden>Abrir en Google Maps</a>
+              <a class="btn btn-ghost details-waze" target="_blank" rel="noopener" hidden>Abrir en Waze</a>
+              <button type="button" class="btn btn-primary btn-big flip-to-back"><span data-t="confirmButton"></span> ${ARROW}</button>
             </div>
             <div class="face back">
-              <h2 class="slide-title">Confirmación de asistencia</h2>
+              <h2 class="slide-title" data-t="rsvpTitle"></h2>
               <p class="rsvp-intro" data-t="rsvp"></p>
               <p class="rsvp-deadline" hidden></p>
               <form class="rsvp-form">
@@ -123,7 +113,7 @@ const DECK = `
                   <span>Su nombre</span>
                   <input name="name" autocomplete="name" required maxlength="60" placeholder="Nombre y apellido">
                 </label>
-                <button class="btn btn-primary btn-big" type="submit">Confirmar asistencia</button>
+                <button class="btn btn-primary btn-big" type="submit" data-t="confirmButton"></button>
                 <p class="form-msg" role="status"></p>
               </form>
               <div class="rsvp-done" hidden>
@@ -145,8 +135,9 @@ const DECK = `
         <p class="farewell-text reveal" data-t="farewell"></p>
         <p class="farewell-closing reveal" data-t="farewellClosing"></p>
         <div class="thanks-actions reveal">
-          <a class="btn btn-ghost thanks-map" target="_blank" rel="noopener" hidden>Ver la ubicación en el mapa</a>
-          <a class="btn btn-primary thanks-poll">¿Niño o niña? Participe en la encuesta</a>
+          <a class="btn btn-ghost thanks-map" target="_blank" rel="noopener" hidden>Ver la ubicación en Google Maps</a>
+          <a class="btn btn-ghost thanks-waze" target="_blank" rel="noopener" hidden>Ver la ubicación en Waze</a>
+          <a class="btn btn-primary thanks-poll" data-t="pollButton"></a>
         </div>
         <div class="reveal">${countdown("countdown-inline")}</div>
       </div>
@@ -162,7 +153,9 @@ const DECK = `
 `;
 
 export async function startInvitation({ app, data, config, demo }) {
-  const texts = { ...DEFAULT_TEXTS, ...config.texts };
+  // Si no se pueden leer los textos del panel, quedan los del config.js.
+  const saved = await data.getTexts().catch(() => null);
+  const texts = { ...DEFAULT_TEXTS, ...config.texts, ...saved };
   const codeKey = `inv:${config.eventId}:code`;
 
   // Por ahora no se pide el código en pantalla: se toma del final del enlace
@@ -178,10 +171,7 @@ export async function startInvitation({ app, data, config, demo }) {
   startCarousel($(".carousel", app));
   startSparkles(document.body);
 
-  $$("[data-t]", app).forEach((el) => {
-    el.textContent = texts[el.dataset.t] || "";
-    el.hidden = !el.textContent;
-  });
+  applyTexts(app, texts);
 
   if (details?.guest) {
     $(".hero-guest").textContent = `Invitación para ${details.guest}`;
@@ -200,9 +190,8 @@ export async function startInvitation({ app, data, config, demo }) {
 }
 
 // Contador fijo hasta el gran día (hora del servidor, no la del teléfono).
-function startCountdown(data, target) {
+export function startCountdown(data, target, boxes = $$(".countdown")) {
   if (!target) return;
-  const boxes = $$(".countdown");
   const pad = (n) => String(n).padStart(2, "0");
   boxes.forEach((box) => { box.hidden = false; });
   function tick() {
@@ -244,13 +233,22 @@ function renderDetails(d) {
     return li;
   }));
 
-  const map = safeUrl(d?.mapsUrl);
-  if (map) {
-    for (const link of $$(".details-map, .thanks-map")) {
-      link.href = map;
+  const { maps, waze } = mapLinks(d);
+  for (const [selector, url] of [[".details-map, .thanks-map", maps], [".details-waze, .thanks-waze", waze]]) {
+    if (!url) continue;
+    for (const link of $$(selector)) {
+      link.href = url;
       link.hidden = false;
     }
   }
+}
+
+// Enlaces de ubicación que se muestran: con enlace válido y sin desmarcar en el panel.
+export function mapLinks(d) {
+  return {
+    maps: d?.showMaps === false ? null : safeUrl(d?.mapsUrl),
+    waze: d?.showWaze === false ? null : safeUrl(d?.wazeUrl),
+  };
 }
 
 async function setupRsvp(data, code, details, deck, state) {

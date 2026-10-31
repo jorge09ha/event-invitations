@@ -44,6 +44,11 @@ export async function createFirebaseData(cfg) {
       return snap.val();
     },
 
+    async getTexts() {
+      const snap = await get(r("texts"));
+      return snap.val();
+    },
+
     watchVoteCount(cb) {
       return onValue(r("voteCount"), (snap) => cb(snap.val() || 0));
     },
