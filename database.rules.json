@@ -5,7 +5,11 @@
     "events": {
       "$eventId": {
         "config": {
-          ".read": true
+          ".read": true,
+          "revealAt": {
+            ".write": "auth != null && newData.exists() && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",
+            ".validate": "newData.isNumber() && newData.val() > now"
+          }
         },
         "admins": {
           ".read": "auth != null && root.child('events').child($eventId).child('admins').child(auth.uid).val() === true",

@@ -65,7 +65,7 @@ Permite crear las invitaciones individuales y dar seguimiento sin entrar a la co
    El enlace general de votación se comparte desde la tarjeta **Enlace de votación**, en **Ver votos**; su mensaje se cambia en **Modificar textos → Votación**.
 3. **Dar seguimiento:** el panel muestra quién confirmó, quién falta y los votos en tiempo real, también antes de la revelación.
 4. **Desactivar:** el enlace de esa persona deja de mostrar los detalles y de aceptar confirmaciones.
-5. **Detalles del gran día:** su propia sección del menú cambia fecha, hora, lugar, dirección, enlaces de Google Maps y de Waze, dress code, indicaciones y fecha límite en todas las invitaciones. Cada enlace tiene una casilla para mostrarlo u ocultarlo en la invitación. El contador de arriba del panel y la revelación usan `revealAt`, que sigue en Firebase; si cambia el día del evento, hay que actualizar ambos.
+5. **Detalles del gran día:** su propia sección del menú cambia fecha, hora, lugar, dirección, enlaces de Google Maps y de Waze, dress code, indicaciones y fecha límite en todas las invitaciones. Cada enlace tiene una casilla para mostrarlo u ocultarlo en la invitación. La fecha y la hora se eligen con un selector y guardan `revealAt`: de ahí salen el texto que leen los invitados, el contador, el cierre de la votación y la revelación. El panel solo acepta fechas futuras.
    **Editar textos:** en el menú, **Modificar textos → Invitación** muestra toda la invitación en una sola página, sin globos, en el mismo orden. Se toca cada texto marcado para cambiarlo (los detalles solo se muestran); más abajo está el mensaje de WhatsApp. **Modificar textos → Votación** hace lo mismo con la página de votación, con sus estados uno debajo del otro. Un texto vacío vuelve al original (`config.js`, o `publicTitle` y `publicSubtitle` en la votación).
 6. **Revelar en vivo:** **Revelación de sexo** abre una pantalla para proyectar. Al abrirla empieza una apertura automática: latido con volumen gradual, ultrasonido con los nombres de quienes votaron girando alrededor y agradecimiento. Con «Ver quiénes votaron» muestra los nombres a medida que votan, sin indicar su voto, y con «Revelar resultados» pasa a la cuenta regresiva, las barras, los nombres por opción, el confeti y los globos. Es independiente de `revealAt`: los invitados siguen viendo los resultados a esa hora.
 
@@ -97,7 +97,7 @@ El repositorio es público (requisito de GitHub Pages gratuito), así que **nada
 
 | Dato | Ruta en Firebase | Quién puede leer | Quién puede escribir |
 |---|---|---|---|
-| Fecha de revelación, título público | `events/<id>/config` | Cualquiera | Solo usted (consola) |
+| Fecha de revelación, título público | `events/<id>/config` | Cualquiera | `revealAt`: administradores, solo fechas futuras; lo demás, solo usted (consola) |
 | Administradores | `events/<id>/admins/<uid>` y `adminNames/<uid>` | Cada cuenta, su propia marca; los administradores, toda la lista | Administradores (no sobre sí mismos); el primero, en la consola |
 | Textos de la invitación | `events/<id>/texts` | Cualquiera | Administradores |
 | Teléfonos de los invitados | `events/<id>/guestPhones/<CÓDIGO>` | Solo administradores (ni con el enlace se pueden leer) | Administradores |

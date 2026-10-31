@@ -12,9 +12,11 @@ export const countdown = (extra = "") => `
     <p class="countdown-today" hidden>¡Hoy es el gran día!</p>
   </div>`;
 
-// Usa la hora del servidor (data.serverNow), no la del teléfono.
+// Usa la hora del servidor (data.serverNow), no la del teléfono. Devuelve cómo
+// detenerlo, por si la fecha cambia con la página abierta.
 export function startCountdown(data, target, boxes = $$(".countdown")) {
-  if (!target) return;
+  if (!target) return () => {};
+  let timer = null;
   const pad = (n) => String(n).padStart(2, "0");
   boxes.forEach((box) => { box.hidden = false; });
   function tick() {
@@ -26,7 +28,8 @@ export function startCountdown(data, target, boxes = $$(".countdown")) {
       $(".countdown-today", box).hidden = Boolean(left);
       $$("[data-cd]", box).forEach((el) => { el.textContent = pad(values[el.dataset.cd]); });
     }
-    if (left) setTimeout(tick, 1000 - (data.serverNow() % 1000));
+    if (left) timer = setTimeout(tick, 1000 - (data.serverNow() % 1000));
   }
   tick();
+  return () => clearTimeout(timer);
 }

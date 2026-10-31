@@ -52,6 +52,33 @@ export function plural(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
+// Fecha y hora de un instante en una zona horaria, como las usan los campos
+// <input type="date"> y <input type="time">.
+export function zonedDateTime(ms, timeZone) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  }).formatToParts(new Date(ms)).map((p) => [p.type, p.value]));
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+}
+
+// Lo contrario: el instante que corresponde a esa fecha y hora en la zona horaria.
+export function zonedToMs(date, time, timeZone) {
+  const asUtc = Date.parse(`${date}T${time}:00Z`);
+  const shown = zonedDateTime(asUtc, timeZone);
+  return asUtc - (Date.parse(`${shown.date}T${shown.time}:00Z`) - asUtc);
+}
+
+export function formatDayText(ms, timeZone) {
+  const text = new Intl.DateTimeFormat("es-CR", { weekday: "long", day: "numeric", month: "long", timeZone })
+    .format(new Date(ms)).replace(",", "");
+  return text[0].toUpperCase() + text.slice(1);
+}
+
+export function formatTimeText(ms, timeZone) {
+  return new Intl.DateTimeFormat("es-CR", { hour: "numeric", minute: "2-digit", timeZone })
+    .format(new Date(ms)).replace(/\s/g, " ");
+}
+
 export function formatDate(ms, timeZone) {
   return new Intl.DateTimeFormat("es-CR", {
     weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit", timeZone,

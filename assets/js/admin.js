@@ -2,7 +2,7 @@
 // confirmaciones y votos. Cada invitación es una entrada private/<CÓDIGO> con
 // una copia de los detalles del evento más el nombre del invitado (guest).
 
-import { $, $$, busy, cleanName, formatDate, nameKey, plural, safeUrl, store } from "./util.js";
+import { $, $$, busy, cleanName, formatDate, formatDayText, formatTimeText, nameKey, plural, safeUrl, store, zonedDateTime, zonedToMs } from "./util.js";
 import { DEFAULT_TEXTS, DETAIL_LABELS, TEXT_LABELS } from "./invitation-texts.js";
 import { DECK, icon, mapLinks } from "./invitation.js";
 import { countdown, startCountdown } from "./countdown.js";
@@ -123,10 +123,12 @@ const PANEL = `
 
   <form class="card admin-details" data-panel="details">
     <p class="muted">Solo los ve quien tenga un enlace de invitación válido. Al guardar, se actualizan todas las invitaciones. Los campos vacíos no se muestran.</p>
-    <p class="admin-reveal-date muted" hidden></p>
     <p class="admin-no-master muted" hidden>Para editar estos datos, primero cárguelos en Firebase (private/&lt;CÓDIGO&gt;).</p>
-    <label class="field"><span>Fecha</span><input data-d="date" placeholder="Sábado 12 de diciembre"></label>
-    <label class="field"><span>Hora</span><input data-d="time" placeholder="3:00 p. m."></label>
+    <div class="admin-when">
+      <label class="field"><span>Fecha</span><input type="date" name="eventDate" required></label>
+      <label class="field"><span>Hora</span><input type="time" name="eventTime" required></label>
+    </div>
+    <p class="muted admin-when-help">De esta fecha y hora dependen el contador, el cierre de la votación y la revelación de los resultados.</p>
     <label class="field"><span>Lugar</span><input data-d="place"></label>
     <label class="field"><span>Dirección</span><input data-d="address"></label>
     <div class="admin-link-field">
@@ -360,7 +362,17 @@ function showPanel(app, data, config, demo, user) {
   const inviteEditor = setupTextEditor(inviteForm, data, baseTexts, allTexts, {
     fill: () => showInviteDetails(inviteForm, priv, inviteUrl),
   });
-  const detailsEditor = setupDetailsForm($(".admin-details", app), data, () => priv, inviteUrl);
+  const timeZone = config.timeZone || "America/Costa_Rica";
+  const stopCountdowns = [];
+  function applyRevealAt(revealAt) {
+    stopCountdowns.splice(0).forEach((stop) => stop());
+    stopCountdowns.push(
+      startCountdown({ serverNow: Date.now }, revealAt, [$(".admin-head .countdown", app)]),
+      startCountdown({ serverNow: Date.now }, revealAt, [$(".vote-editor .countdown", app)]),
+    );
+    if (revealAt) $(".vote-date", app).textContent = formatDate(revealAt, timeZone);
+  }
+  const detailsEditor = setupDetailsForm($(".admin-details", app), data, () => priv, inviteUrl, timeZone, applyRevealAt);
 
   const voteForm = $('[data-panel="voting"]', app);
   buildVoteEditor($(".vote-editor", voteForm));
@@ -382,15 +394,9 @@ function showPanel(app, data, config, demo, user) {
   // El título y el subtítulo vienen de la configuración del evento hasta que se editen.
   data.getConfig().then((cfg) => {
     Object.assign(baseTexts, configTexts(cfg));
-    const timeZone = config.timeZone || "America/Costa_Rica";
-    showVoteDates(voteForm, cfg, timeZone);
     const revealAt = Number(cfg.revealAt);
-    startCountdown({ serverNow: Date.now }, revealAt, [$(".admin-head .countdown", app)]);
-    if (revealAt) {
-      const line = $(".admin-reveal-date", app);
-      line.textContent = `El contador y la revelación usan otra fecha, configurada en Firebase (revealAt: ${formatDate(revealAt, timeZone)}). Si cambia el día del evento, hay que actualizarla también allí.`;
-      line.hidden = false;
-    }
+    applyRevealAt(revealAt);
+    detailsEditor.setRevealAt(revealAt);
     fillEditors();
   }).catch((err) => console.error(err));
 
@@ -718,13 +724,6 @@ function buildVoteEditor(root) {
   startCarousel($(".carousel", root));
 }
 
-function showVoteDates(form, cfg, timeZone) {
-  const revealAt = Number(cfg.revealAt);
-  if (!revealAt) return;
-  $(".vote-date", form).textContent = formatDate(revealAt, timeZone);
-  startCountdown({ serverNow: Date.now }, revealAt, [$(".vote-editor .countdown", form)]);
-}
-
 const readField = (el) => (el.value ?? el.textContent).trim();
 
 function writeField(el, text) {
@@ -823,10 +822,13 @@ function showInviteDetails(form, priv, inviteUrl) {
 
 // Sección «Detalles del gran día»: se guardan en private/, tanto en la entrada
 // general como en cada invitación.
-function setupDetailsForm(form, data, getPriv, inviteUrl) {
+function setupDetailsForm(form, data, getPriv, inviteUrl, timeZone, onRevealChange) {
   const msg = $(".form-msg", form);
   const fields = $$("[data-d]", form);
   const checks = $$("[data-show]", form);
+  const dateInput = form.elements.eventDate;
+  const timeInput = form.elements.eventTime;
+  let revealAt = 0;
   let dirty = false;
   form.addEventListener("input", () => {
     dirty = true;
@@ -851,6 +853,13 @@ function setupDetailsForm(form, data, getPriv, inviteUrl) {
       el.checked = master[el.dataset.show] !== false;
       el.disabled = !code;
     }
+    if (revealAt) {
+      const when = zonedDateTime(revealAt, timeZone);
+      dateInput.value = when.date;
+      timeInput.value = when.time;
+    }
+    dateInput.disabled = !code;
+    timeInput.disabled = !code;
   }
 
   form.addEventListener("submit", async (e) => {
@@ -867,29 +876,52 @@ function setupDetailsForm(form, data, getPriv, inviteUrl) {
       }
     }
 
+    const nextReveal = zonedToMs(dateInput.value, timeInput.value, timeZone);
+    const dateChanged = nextReveal !== revealAt;
+    // Con una fecha pasada, los votos quedarían a la vista de cualquiera.
+    if (dateChanged && nextReveal <= Date.now()) {
+      msg.textContent = "La fecha y la hora deben estar en el futuro.";
+      dateInput.focus();
+      return;
+    }
+    if (dateChanged && !confirm(`¿Cambiar el gran día a ${formatDate(nextReveal, timeZone)}? También se moverán el contador, el cierre de la votación y la revelación de los resultados.`)) return;
+
     const details = { ...priv[code] };
     for (const el of fields) details[el.dataset.d] = el.value.trim() || null;
     for (const el of checks) details[el.dataset.show] = el.checked ? null : false;
-    const changes = { [code]: details };
+    // Lo que leen los invitados sale de la misma fecha, para que siempre coincida.
+    details.date = formatDayText(nextReveal, timeZone);
+    details.time = formatTimeText(nextReveal, timeZone);
+    const changes = { [`private/${code}`]: details };
     for (const [other, entry] of Object.entries(priv)) {
-      if (entry.guest) changes[other] = { ...details, guest: entry.guest };
+      if (entry.guest) changes[`private/${other}`] = { ...details, guest: entry.guest };
     }
+    if (dateChanged) changes["config/revealAt"] = nextReveal;
 
     busy(form, true);
     msg.textContent = "";
     try {
-      await data.updatePrivate(changes);
+      await data.updateEvent(changes);
       dirty = false;
+      if (dateChanged) {
+        revealAt = nextReveal;
+        onRevealChange(revealAt);
+      }
       msg.textContent = "Detalles guardados.";
     } catch (err) {
       console.error(err);
-      msg.textContent = "No se pudieron guardar los detalles. Inténtelo de nuevo.";
+      msg.textContent = "No se pudieron guardar los detalles. Revise que las reglas nuevas estén publicadas.";
     }
     busy(form, false);
     fill();
   });
 
-  return { fill };
+  return {
+    fill,
+    setRevealAt(value) {
+      revealAt = value;
+    },
+  };
 }
 
 // La entrada sin invitado es la del enlace general: la fuente de los detalles.

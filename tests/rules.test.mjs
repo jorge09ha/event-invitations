@@ -83,6 +83,15 @@ await t("no admin: leer teléfonos falla", () => assertFails(db("alice").ref(`${
 await t("con el código no se lee el teléfono", () => assertFails(db("alice").ref(`${E}/guestPhones/TEL1-1234-5678`).get()));
 await t("no admin: escribir teléfono falla", () => assertFails(db("alice").ref(`${E}/guestPhones/TEL1-1234-5678`).set("50611112222")));
 await t("admin: desactiva invitación y teléfono", () => assertSucceeds(db("root").ref(E).update({ "private/TEL1-1234-5678": null, "guestPhones/TEL1-1234-5678": null })));
+let originalReveal;
+await env.withSecurityRulesDisabled(async (c) => { originalReveal = (await c.database().ref(`${E}/config/revealAt`).get()).val(); });
+await t("admin: cambia la fecha del evento", () => assertSucceeds(db("root").ref(`${E}/config/revealAt`).set(Date.now() + 7200e3)));
+await t("admin: fecha pasada falla", () => assertFails(db("root").ref(`${E}/config/revealAt`).set(Date.now() - 1000)));
+await t("admin: fecha que no es número falla", () => assertFails(db("root").ref(`${E}/config/revealAt`).set("mañana")));
+await t("admin: borrar la fecha falla", () => assertFails(db("root").ref(E).update({ "config/revealAt": null })) );
+await t("admin: otros campos de config fallan", () => assertFails(db("root").ref(`${E}/config/publicTitle`).set("x")));
+await t("no admin: cambiar la fecha falla", () => assertFails(db("alice").ref(`${E}/config/revealAt`).set(Date.now() + 7200e3)));
+await env.withSecurityRulesDisabled((c) => c.database().ref(`${E}/config/revealAt`).set(originalReveal));
 await t("admin: edita textos", () => assertSucceeds(db("root").ref(`${E}/texts`).update({ title: "Nuevo", cta: null })));
 await t("textos públicos", async () => { const s = await assertSucceeds(db(null).ref(`${E}/texts`).get()); if (s.val()?.title !== "Nuevo") throw new Error("sin datos"); });
 await t("admin: texto demasiado largo falla", () => assertFails(db("root").ref(`${E}/texts`).update({ title: "x".repeat(1001) })));

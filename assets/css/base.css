@@ -695,6 +695,9 @@ legend { font-weight: 600; font-size: .95rem; margin-bottom: 6px; }
 .admin-admins .admin-phone { font-family: ui-monospace, Consolas, monospace; font-size: .78rem; overflow-wrap: anywhere; }
 .admin-admins .admin-row-main { margin-bottom: 0; }
 .admin-remove { flex: none; padding: 4px 2px; font-size: .88rem; }
+.admin-when { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
+.admin-when input { min-width: 0; }
+.admin-when-help { margin-top: -8px; font-size: .88rem; }
 .admin-link-field { display: grid; gap: 8px; }
 .admin-check { display: flex; align-items: center; gap: 8px; font-size: .95rem; cursor: pointer; }
 .admin-check input[type="checkbox"] { flex: none; width: 20px; height: 20px; padding: 0; accent-color: var(--accent); cursor: pointer; }

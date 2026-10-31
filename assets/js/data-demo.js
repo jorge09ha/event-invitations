@@ -27,6 +27,8 @@ const DETAILS = {
 const PRIVATE_KEY = "demo:private";
 const TEXTS_KEY = "demo:texts";
 const PHONES_KEY = "demo:phones";
+const REVEAL_KEY = "demo:revealAt";
+const DEFAULT_REVEAL_SECONDS = 7 * 24 * 3600;
 
 function readDemo(key, fallback) {
   try {
@@ -70,7 +72,7 @@ export function createDemoAdminData() {
       return {
         publicTitle: "¿Niño o niña?",
         publicSubtitle: "Vote por lo que usted cree que será el bebé",
-        revealAt: Date.now() + 7 * 24 * 3600 * 1000,
+        revealAt: Number(store.get(REVEAL_KEY)) || Date.now() + DEFAULT_REVEAL_SECONDS * 1000,
       };
     },
     watchPrivate(cb) { onPrivate = cb; cb(priv); },
@@ -104,7 +106,8 @@ export function createDemoAdminData() {
       const nodes = { guestPhones: phones, admins, adminNames };
       for (const [path, value] of Object.entries(changes)) {
         const [node, code] = path.split("/");
-        if (node === "private") privChanges[code] = value;
+        if (node === "config") store.set(REVEAL_KEY, String(value));
+        else if (node === "private") privChanges[code] = value;
         else if (value) nodes[node][code] = value;
         else delete nodes[node][code];
       }
@@ -124,7 +127,10 @@ export function createDemoAdminData() {
 }
 
 export function createDemoData(secondsToReveal) {
-  const revealAt = Date.now() + secondsToReveal * 1000;
+  // La fecha elegida en el panel de demostración solo aplica al ?demo normal;
+  // ?demo=30 sigue revelando a los 30 segundos.
+  const saved = secondsToReveal === DEFAULT_REVEAL_SECONDS ? Number(store.get(REVEAL_KEY)) : 0;
+  const revealAt = saved || Date.now() + secondsToReveal * 1000;
   const votes = SAMPLE.slice(0, 6).map(([name, choice]) => ({ name, nameKey: nameKey(name), choice }));
   const listeners = new Set();
   let myVote = null;
